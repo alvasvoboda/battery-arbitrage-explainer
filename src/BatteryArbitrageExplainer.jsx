@@ -45,9 +45,9 @@ const BatteryArbitrageExplainer = () => {
         chargeDischargePower = -BATTERY_POWER; // Full 1 MW charging (negative)
         currentSoC = Math.min(BATTERY_CAPACITY, currentSoC + BATTERY_POWER * CHARGING_EFFICIENCY);
       } else if (dischargingHrs.includes(hour)) {
-        const maxDischarge = Math.min(BATTERY_POWER, currentSoC / CHARGING_EFFICIENCY);
+        const maxDischarge = Math.min(BATTERY_POWER, currentSoC);
         chargeDischargePower = maxDischarge; // Discharging (positive)
-        currentSoC = Math.max(0, currentSoC - maxDischarge * CHARGING_EFFICIENCY);
+        currentSoC = Math.max(0, currentSoC - maxDischarge);
       }
       return {
         hour,
