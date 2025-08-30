@@ -94,6 +94,7 @@ const BatteryArbitrageExplainer = () => {
               <YAxis 
                 yAxisId="right" 
                 orientation="right" 
+                domain={[0, 100]}
                 label={{ value: 'SoC (%)', angle: 90, position: 'insideRight' }}
               />
               <Tooltip />
