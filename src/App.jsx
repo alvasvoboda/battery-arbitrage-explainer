@@ -1,6 +1,5 @@
 import React from 'react';
 import BatteryArbitrageExplainer from './BatteryArbitrageExplainer.jsx';
-import './App.css';
 
 function App() {
   return (
