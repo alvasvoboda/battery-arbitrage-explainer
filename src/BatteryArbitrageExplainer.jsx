@@ -110,7 +110,7 @@ const BatteryArbitrageExplainer = () => {
   };
 
   const calculateArbitrage = (priceData) => {
-    const sortedPrices = [...newPrices].sort((a, b) => a.price - b.price);
+    const sortedPrices = [...priceData].sort((a, b) => a.price - b.price);
     const lowestPrices = sortedPrices.slice(0, 5);
     const highestPrices = sortedPrices.slice(-4);
 
