@@ -6,6 +6,8 @@ const BatteryArbitrageExplainer = () => {
   const [chargingHours, setChargingHours] = useState([]);
   const [dischargingHours, setDischargingHours] = useState([]);
   const [netRevenue, setNetRevenue] = useState(0);
+  const [csvData, setCsvData] = useState(null);
+  const [fileName, setFileName] = useState('');
 
   const BATTERY_CAPACITY = 4; // MWh
   const BATTERY_POWER = 1; // MW
@@ -14,6 +16,80 @@ const BatteryArbitrageExplainer = () => {
   useEffect(() => {
     generatePrices();
   }, []);
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+      setFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        parseCsvData(text);
+      };
+      reader.readAsText(file);
+    } else {
+      alert('Please select a valid CSV file');
+    }
+  };
+
+  const parseCsvData = (csvText) => {
+    try {
+      const lines = csvText.trim().split('\n');
+      const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+      
+      // Look for common column names for hour and price
+      const hourIndex = headers.findIndex(h => 
+        h.includes('hour') || h.includes('time') || h.includes('period')
+      );
+      const priceIndex = headers.findIndex(h => 
+        h.includes('price') || h.includes('cost') || h.includes('rate') || h.includes('$/mwh')
+      );
+      
+      if (hourIndex === -1 || priceIndex === -1) {
+        alert('CSV must contain columns for hour/time and price. Common names: hour, time, period, price, cost, rate, $/MWh');
+        return;
+      }
+      
+      const prices = [];
+      for (let i = 1; i < lines.length && i <= 24; i++) {
+        const values = lines[i].split(',').map(v => v.trim());
+        if (values.length >= Math.max(hourIndex, priceIndex) + 1) {
+          const hour = parseInt(values[hourIndex]);
+          const price = parseFloat(values[priceIndex]);
+          
+          if (!isNaN(hour) && !isNaN(price) && hour >= 0 && hour <= 23) {
+            prices.push({ hour, price });
+          }
+        }
+      }
+      
+      if (prices.length < 24) {
+        alert(`CSV should contain 24 hours of data. Found ${prices.length} valid entries.`);
+        return;
+      }
+      
+      // Sort by hour to ensure proper order
+      prices.sort((a, b) => a.hour - b.hour);
+      
+      // Fill in any missing hours with interpolated values
+      const completePrices = Array(24).fill(0).map((_, hour) => {
+        const found = prices.find(p => p.hour === hour);
+        return found || { hour, price: 50 }; // Default price if missing
+      });
+      
+      setCsvData(completePrices);
+      calculateArbitrage(completePrices);
+    } catch (error) {
+      alert('Error parsing CSV file. Please check the format.');
+      console.error('CSV parsing error:', error);
+    }
+  };
+
+  const useCsvData = () => {
+    if (csvData) {
+      calculateArbitrage(csvData);
+    }
+  };
 
   const generatePrices = () => {
     const newPrices = Array(24).fill(0).map((_, i) => {
@@ -28,6 +104,12 @@ const BatteryArbitrageExplainer = () => {
       return { hour: i, price };
     });
 
+    setCsvData(null);
+    setFileName('');
+    calculateArbitrage(newPrices);
+  };
+
+  const calculateArbitrage = (priceData) => {
     const sortedPrices = [...newPrices].sort((a, b) => a.price - b.price);
     const lowestPrices = sortedPrices.slice(0, 5);
     const highestPrices = sortedPrices.slice(-4);
@@ -39,7 +121,7 @@ const BatteryArbitrageExplainer = () => {
     setDischargingHours(dischargingHrs);
 
     let currentSoC = 0;
-    const data = newPrices.map(({ hour, price }) => {
+    const data = priceData.map(({ hour, price }) => {
       let chargeDischargePower = 0;
       if (chargingHrs.includes(hour)) {
         chargeDischargePower = -BATTERY_POWER; // Full 1 MW charging (negative)
@@ -59,8 +141,8 @@ const BatteryArbitrageExplainer = () => {
 
     setHourlyData(data);
 
-    const totalChargingCost = chargingHrs.reduce((sum, hour) => sum + newPrices[hour].price * BATTERY_POWER, 0);
-    const totalDischargingRevenue = dischargingHrs.reduce((sum, hour) => sum + newPrices[hour].price * BATTERY_POWER * CHARGING_EFFICIENCY, 0);
+    const totalChargingCost = chargingHrs.reduce((sum, hour) => sum + priceData[hour].price * BATTERY_POWER, 0);
+    const totalDischargingRevenue = dischargingHrs.reduce((sum, hour) => sum + priceData[hour].price * BATTERY_POWER * CHARGING_EFFICIENCY, 0);
     setNetRevenue((totalDischargingRevenue - totalChargingCost).toFixed(2));
   };
 
@@ -68,14 +150,36 @@ const BatteryArbitrageExplainer = () => {
     <div className="w-full max-w-4xl mx-auto p-4 bg-white shadow-lg rounded-lg">
       <h2 className="text-2xl font-bold mb-4">Battery Arbitrage Bidding Explainer</h2>
       
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <p className="text-lg">Simulate battery arbitrage in day-ahead markets</p>
-        <button 
-          onClick={generatePrices} 
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Generate New Prices
-        </button>
+        <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex flex-col gap-2">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="text-sm"
+              id="csv-upload"
+            />
+            {fileName && (
+              <div className="flex gap-2">
+                <span className="text-sm text-gray-600">{fileName}</span>
+                <button 
+                  onClick={useCsvData}
+                  className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+                >
+                  Use CSV Data
+                </button>
+              </div>
+            )}
+          </div>
+          <button 
+            onClick={generatePrices} 
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Generate Random Prices
+          </button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -147,6 +251,7 @@ const BatteryArbitrageExplainer = () => {
           <p><strong>Discharging Hours:</strong> {dischargingHours.join(', ') || 'N/A'}</p>
           <p><strong>Net Revenue:</strong> ${netRevenue}</p>
           <p><strong>Final State of Charge:</strong> {hourlyData[23]?.soc?.toFixed(1) || 0}%</p>
+          {csvData && <p><strong>Data Source:</strong> {fileName}</p>}
         </div>
         
         <div>
@@ -154,7 +259,7 @@ const BatteryArbitrageExplainer = () => {
           <p><strong>Battery Capacity:</strong> 4 MWh</p>
           <p><strong>Power Rating:</strong> 1 MW</p>
           <p><strong>Charging Efficiency:</strong> 80%</p>
-          <p><strong>Price Pattern:</strong> Low prices in hours 1-5 & 9-16, high prices in hours 7-8 & 18-21</p>
+          <p><strong>CSV Format:</strong> Columns for hour/time (0-23) and price ($/MWh)</p>
         </div>
       </div>
     </div>
