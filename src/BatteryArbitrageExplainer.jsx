@@ -120,8 +120,9 @@ const BatteryArbitrageExplainer = () => {
     let chargingHours = sortedPrices.slice(0, 5);
     let dischargingHours = sortedPrices.slice(-4);
     
-    console.log('Initial charging hours:', chargingHours.map(h => `Hour ${h.hour}: $${h.price}`));
-    console.log('Initial discharging hours:', dischargingHours.map(h => `Hour ${h.hour}: $${h.price}`));
+    console.log('All prices sorted:', sortedPrices.map(h => `Hour ${h.hour}: $${h.price.toFixed(2)}`));
+    console.log('Initial charging hours (5 cheapest):', chargingHours.map(h => `Hour ${h.hour}: $${h.price.toFixed(2)}`));
+    console.log('Initial discharging hours (4 most expensive):', dischargingHours.map(h => `Hour ${h.hour}: $${h.price.toFixed(2)}`));
     
     // Remove unprofitable pairs
     while (chargingHours.length > 0 && dischargingHours.length > 0) {
@@ -137,7 +138,7 @@ const BatteryArbitrageExplainer = () => {
       const chargingCost = maxChargingPrice;
       const dischargingValue = minDischargingPrice * (chargingEfficiency / 100);
       
-      console.log(`Comparing: Charge Hour ${highestChargingHour.hour} ($${chargingCost}) vs Discharge Hour ${lowestDischargingHour.hour} ($${minDischargingPrice} * ${chargingEfficiency/100} = $${dischargingValue.toFixed(2)})`);
+      console.log(`Comparing: Charge Hour ${highestChargingHour.hour} ($${chargingCost.toFixed(2)}) vs Discharge Hour ${lowestDischargingHour.hour} ($${dischargingValue.toFixed(2)})`);
       
       if (chargingCost > dischargingValue) {
         console.log(`Removing unprofitable pair: Hour ${highestChargingHour.hour} and Hour ${lowestDischargingHour.hour}`);
