@@ -116,37 +116,36 @@ const BatteryArbitrageExplainer = () => {
   const calculateArbitrage = (priceData) => {
     const sortedPrices = [...priceData].sort((a, b) => a.price - b.price);
     
-    // Start with potential charging hours (lowest prices) and discharging hours (highest prices)
-    let potentialChargingHours = sortedPrices.slice(0, 5);
-    let potentialDischargingHours = sortedPrices.slice(-4).reverse(); // Reverse to get highest first
+    // Start with 5 cheapest hours for charging and 4 most expensive for discharging
+    let chargingHours = sortedPrices.slice(0, 5);
+    let dischargingHours = sortedPrices.slice(-4);
     
-    // Remove unprofitable pairs by comparing highest charging cost with lowest discharging value
-    while (potentialChargingHours.length > 0 && potentialDischargingHours.length > 0) {
-      // Find the highest cost charging hour
-      const highestChargingHour = potentialChargingHours.reduce((max, hour) => 
-        hour.price > max.price ? hour : max
-      );
+    // Remove unprofitable pairs
+    while (chargingHours.length > 0 && dischargingHours.length > 0) {
+      // Find highest cost among charging hours
+      const maxChargingPrice = Math.max(...chargingHours.map(h => h.price));
+      const highestChargingHour = chargingHours.find(h => h.price === maxChargingPrice);
       
-      // Find the lowest value discharging hour
-      const lowestDischargingHour = potentialDischargingHours.reduce((min, hour) => 
-        hour.price < min.price ? hour : min
-      );
+      // Find lowest value among discharging hours
+      const minDischargingPrice = Math.min(...dischargingHours.map(h => h.price));
+      const lowestDischargingHour = dischargingHours.find(h => h.price === minDischargingPrice);
       
-      const chargingCost = highestChargingHour.price;
-      const dischargingValue = lowestDischargingHour.price * (chargingEfficiency / 100);
+      // Check if this pair is profitable
+      const chargingCost = maxChargingPrice;
+      const dischargingValue = minDischargingPrice * (chargingEfficiency / 100);
       
       if (chargingCost >= dischargingValue) {
-        // This pair is unprofitable, remove both hours
-        potentialChargingHours = potentialChargingHours.filter(h => h.hour !== highestChargingHour.hour);
-        potentialDischargingHours = potentialDischargingHours.filter(h => h.hour !== lowestDischargingHour.hour);
+        // Remove the unprofitable pair
+        chargingHours = chargingHours.filter(h => h.hour !== highestChargingHour.hour);
+        dischargingHours = dischargingHours.filter(h => h.hour !== lowestDischargingHour.hour);
       } else {
-        // All remaining pairs are profitable, break out of loop
+        // All remaining pairs are profitable
         break;
       }
     }
     
-    const chargingHrs = potentialChargingHours.map(h => h.hour);
-    const dischargingHrs = potentialDischargingHours.map(h => h.hour);
+    const chargingHrs = chargingHours.map(h => h.hour);
+    const dischargingHrs = dischargingHours.map(h => h.hour);
     
     setChargingHours(chargingHrs);
     setDischargingHours(dischargingHrs);
