@@ -139,7 +139,7 @@ const BatteryArbitrageExplainer = () => {
       
       console.log(`Comparing: Charge Hour ${highestChargingHour.hour} ($${chargingCost}) vs Discharge Hour ${lowestDischargingHour.hour} ($${minDischargingPrice} * ${chargingEfficiency/100} = $${dischargingValue.toFixed(2)})`);
       
-      if (chargingCost >= dischargingValue) {
+      if (chargingCost > dischargingValue) {
         console.log(`Removing unprofitable pair: Hour ${highestChargingHour.hour} and Hour ${lowestDischargingHour.hour}`);
         // Remove the unprofitable pair
         chargingHours = chargingHours.filter(h => h.hour !== highestChargingHour.hour);
