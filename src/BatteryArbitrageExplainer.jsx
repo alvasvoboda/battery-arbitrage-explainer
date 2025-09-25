@@ -135,13 +135,13 @@ const BatteryArbitrageExplainer = () => {
       const chargingCost = highestChargingHour.price;
       const dischargingValue = lowestDischargingHour.price * (chargingEfficiency / 100);
       
-      if (chargingCost < dischargingValue) {
-        // All remaining pairs are profitable, break out of loop
-        break;
-      } else {
+      if (chargingCost >= dischargingValue) {
         // This pair is unprofitable, remove both hours
         potentialChargingHours = potentialChargingHours.filter(h => h.hour !== highestChargingHour.hour);
         potentialDischargingHours = potentialDischargingHours.filter(h => h.hour !== lowestDischargingHour.hour);
+      } else {
+        // All remaining pairs are profitable, break out of loop
+        break;
       }
     }
     
