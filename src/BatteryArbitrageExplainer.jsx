@@ -144,32 +144,6 @@ const BatteryArbitrageExplainer = () => {
 
     const chargingHrs = profitableChargingHours.map(h => h.hour);
     const dischargingHrs = profitableDischargingHours.map(h => h.hour);
-    let potentialDischargingHours = sortedPrices.slice(-4).reverse(); // Reverse to get highest first
-    
-    // Filter for profitable pairs
-    const profitableChargingHours = [];
-    const profitableDischargingHours = [];
-    
-    // Compare highest charging cost with lowest discharging value * efficiency
-    while (potentialChargingHours.length > 0 && potentialDischargingHours.length > 0) {
-      const highestChargingCost = potentialChargingHours[potentialChargingHours.length - 1].price;
-      const lowestDischargingValue = potentialDischargingHours[potentialDischargingHours.length - 1].price;
-      
-      // Check if charging cost < discharge value * efficiency
-      if (highestChargingCost < lowestDischargingValue * (chargingEfficiency / 100)) {
-        // All remaining pairs are profitable
-        profitableChargingHours.push(...potentialChargingHours);
-        profitableDischargingHours.push(...potentialDischargingHours);
-        break;
-      } else {
-        // Remove the unprofitable pair
-        potentialChargingHours.pop(); // Remove highest cost charging hour
-        potentialDischargingHours.pop(); // Remove lowest value discharging hour
-      }
-    }
-
-    const chargingHrs = profitableChargingHours.map(h => h.hour);
-    const dischargingHrs = profitableDischargingHours.map(h => h.hour);
 
     setChargingHours(chargingHrs);
     setDischargingHours(dischargingHrs);
