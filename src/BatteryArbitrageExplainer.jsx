@@ -8,10 +8,14 @@ const BatteryArbitrageExplainer = () => {
   const [netRevenue, setNetRevenue] = useState(0);
   const [csvData, setCsvData] = useState(null);
   const [fileName, setFileName] = useState('');
+  const [chargingEfficiency, setChargingEfficiency] = useState(85);
+  const [chargingCosts, setChargingCosts] = useState([]);
+  const [dischargingRevenues, setDischargingRevenues] = useState([]);
+  const [totalChargingCost, setTotalChargingCost] = useState(0);
+  const [totalDischargingRevenue, setTotalDischargingRevenue] = useState(0);
 
   const BATTERY_CAPACITY = 4; // MWh
   const BATTERY_POWER = 1; // MW
-  const CHARGING_EFFICIENCY = 0.8;
 
   useEffect(() => {
     generatePrices();
@@ -125,7 +129,7 @@ const BatteryArbitrageExplainer = () => {
       let chargeDischargePower = 0;
       if (chargingHrs.includes(hour)) {
         chargeDischargePower = -BATTERY_POWER; // Full 1 MW charging (negative)
-        currentSoC = Math.min(BATTERY_CAPACITY, currentSoC + BATTERY_POWER * CHARGING_EFFICIENCY);
+        currentSoC = Math.min(BATTERY_CAPACITY, currentSoC + BATTERY_POWER * (chargingEfficiency / 100));
       } else if (dischargingHrs.includes(hour)) {
         const maxDischarge = Math.min(BATTERY_POWER, currentSoC);
         chargeDischargePower = maxDischarge; // Discharging (positive)
@@ -141,9 +145,27 @@ const BatteryArbitrageExplainer = () => {
 
     setHourlyData(data);
 
-    const totalChargingCost = chargingHrs.reduce((sum, hour) => sum + priceData[hour].price * BATTERY_POWER, 0);
-    const totalDischargingRevenue = dischargingHrs.reduce((sum, hour) => sum + priceData[hour].price * BATTERY_POWER * CHARGING_EFFICIENCY, 0);
-    setNetRevenue((totalDischargingRevenue - totalChargingCost).toFixed(2));
+    // Calculate detailed costs and revenues
+    const chargingCostDetails = chargingHrs.map(hour => ({
+      hour,
+      price: priceData[hour].price,
+      cost: priceData[hour].price * BATTERY_POWER
+    }));
+    
+    const dischargingRevenueDetails = dischargingHrs.map(hour => ({
+      hour,
+      price: priceData[hour].price,
+      revenue: priceData[hour].price * BATTERY_POWER * (chargingEfficiency / 100)
+    }));
+    
+    const totalChargingCostCalc = chargingCostDetails.reduce((sum, item) => sum + item.cost, 0);
+    const totalDischargingRevenueCalc = dischargingRevenueDetails.reduce((sum, item) => sum + item.revenue, 0);
+    
+    setChargingCosts(chargingCostDetails);
+    setDischargingRevenues(dischargingRevenueDetails);
+    setTotalChargingCost(totalChargingCostCalc);
+    setTotalDischargingRevenue(totalDischargingRevenueCalc);
+    setNetRevenue((totalDischargingRevenueCalc - totalChargingCostCalc).toFixed(2));
   };
 
   return (
@@ -153,6 +175,17 @@ const BatteryArbitrageExplainer = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <p className="text-lg">Simulate battery arbitrage in day-ahead markets</p>
         <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Charging Efficiency (%)</label>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={chargingEfficiency}
+              onChange={(e) => setChargingEfficiency(Number(e.target.value))}
+              className="px-3 py-1 border rounded w-20"
+            />
+          </div>
           <div className="flex flex-col gap-2">
             <input
               type="file"
@@ -247,9 +280,32 @@ const BatteryArbitrageExplainer = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <h3 className="text-lg font-semibold mb-2">Results</h3>
-          <p><strong>Charging Hours:</strong> {chargingHours.join(', ') || 'N/A'}</p>
-          <p><strong>Discharging Hours:</strong> {dischargingHours.join(', ') || 'N/A'}</p>
-          <p><strong>Net Revenue:</strong> ${netRevenue}</p>
+          <div className="mb-4">
+            <p><strong>Charging Hours:</strong> {chargingHours.join(', ') || 'N/A'}</p>
+            <p><strong>Discharging Hours:</strong> {dischargingHours.join(', ') || 'N/A'}</p>
+            <p><strong>Total Charging Cost:</strong> ${totalChargingCost.toFixed(2)}</p>
+            <p><strong>Total Discharge Revenue:</strong> ${totalDischargingRevenue.toFixed(2)}</p>
+            <p><strong>Net Revenue:</strong> ${netRevenue}</p>
+          </div>
+          
+          <div className="mb-4">
+            <h4 className="font-semibold mb-1">Charging Costs by Hour:</h4>
+            {chargingCosts.map(item => (
+              <p key={item.hour} className="text-sm">
+                Hour {item.hour}: ${item.price}/MWh × 1MW = ${item.cost.toFixed(2)}
+              </p>
+            ))}
+          </div>
+          
+          <div className="mb-4">
+            <h4 className="font-semibold mb-1">Discharge Revenues by Hour:</h4>
+            {dischargingRevenues.map(item => (
+              <p key={item.hour} className="text-sm">
+                Hour {item.hour}: ${item.price}/MWh × {(chargingEfficiency/100).toFixed(2)}MW = ${item.revenue.toFixed(2)}
+              </p>
+            ))}
+          </div>
+          
           <p><strong>Final State of Charge:</strong> {hourlyData[23]?.soc?.toFixed(1) || 0}%</p>
           {csvData && <p><strong>Data Source:</strong> {fileName}</p>}
         </div>
@@ -258,7 +314,7 @@ const BatteryArbitrageExplainer = () => {
           <h3 className="text-lg font-semibold mb-2">System Specifications</h3>
           <p><strong>Battery Capacity:</strong> 4 MWh</p>
           <p><strong>Power Rating:</strong> 1 MW</p>
-          <p><strong>Charging Efficiency:</strong> 80%</p>
+          <p><strong>Charging Efficiency:</strong> {chargingEfficiency}%</p>
           <p><strong>CSV Format:</strong> Columns for hour/time (0-23) and price ($/MWh)</p>
         </div>
       </div>
