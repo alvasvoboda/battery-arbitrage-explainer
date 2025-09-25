@@ -192,7 +192,7 @@ const BatteryArbitrageExplainer = () => {
     const dischargingRevenueDetails = dischargingHrs.map(hour => ({
       hour,
       price: priceData[hour].price,
-      revenue: priceData[hour].price * BATTERY_POWER * (chargingEfficiency / 100)
+      revenue: priceData[hour].price * BATTERY_POWER
     }));
     
     const totalChargingCostCalc = chargingCostDetails.reduce((sum, item) => sum + item.cost, 0);
